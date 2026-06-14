@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cafeteria Tracker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">SNOWFLAKE - BELLEVUE</p>
+          <h1>THE LODGE</h1>
+        </div>
+        <div class="topbar-actions">
+          <label class="search-field">
+            <span>Search</span>
+            <input id="searchInput" type="search" placeholder="Dish, note, or tag" />
+          </label>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="calendar-panel" aria-label="Meal calendar">
+          <div class="calendar-toolbar">
+            <button id="prevMonth" class="icon-button" type="button" aria-label="Previous month">‹</button>
+            <h2 id="monthLabel"></h2>
+            <div class="toolbar-cluster">
+              <button id="todayButton" class="text-button" type="button">Today</button>
+              <button id="nextMonth" class="icon-button" type="button" aria-label="Next month">›</button>
+            </div>
+          </div>
+          <div class="weekday-row" aria-hidden="true">
+            <span>Sun</span>
+            <span>Mon</span>
+            <span>Tue</span>
+            <span>Wed</span>
+            <span>Thu</span>
+            <span>Fri</span>
+            <span>Sat</span>
+          </div>
+          <div id="calendarGrid" class="calendar-grid"></div>
+        </section>
+
+        <aside class="day-panel" aria-label="Selected day meals">
+          <div class="day-header">
+            <div>
+              <p class="eyebrow">Selected day</p>
+              <h2 id="selectedDateLabel"></h2>
+            </div>
+            <button id="quickAddButton" class="primary-button" type="button">Add item</button>
+          </div>
+
+          <div id="dayStats" class="stats-strip"></div>
+
+          <div class="meal-section" data-meal-section="breakfast">
+            <div class="section-title">
+              <h3>Breakfast</h3>
+              <button class="add-meal-button" type="button" data-meal-type="breakfast">Add breakfast</button>
+            </div>
+            <div id="breakfastList" class="meal-list"></div>
+          </div>
+
+          <div class="meal-section" data-meal-section="lunch">
+            <div class="section-title">
+              <h3>Lunch</h3>
+              <button class="add-meal-button" type="button" data-meal-type="lunch">Add lunch</button>
+            </div>
+            <div id="lunchList" class="meal-list"></div>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <dialog id="mealDialog" class="meal-dialog">
+      <form id="mealForm" method="dialog">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">Cafeteria item</p>
+            <h2 id="dialogTitle">Add item</h2>
+          </div>
+          <button class="icon-button" value="cancel" type="button" id="closeDialog" aria-label="Close">×</button>
+        </div>
+
+        <input id="mealId" type="hidden" />
+        <div class="form-grid">
+          <label>
+            Date
+            <input id="mealDate" type="date" required />
+          </label>
+          <label>
+            Meal
+            <select id="mealType" required>
+              <option value="breakfast">Breakfast</option>
+              <option value="lunch">Lunch</option>
+            </select>
+          </label>
+        </div>
+
+        <label>
+          Dish name
+          <input id="dishName" type="text" placeholder="Chicken bowl, oatmeal, soup..." required maxlength="80" />
+        </label>
+
+        <fieldset class="rating-field">
+          <legend>Rating</legend>
+          <div id="ratingGroup" class="rating-group" role="radiogroup" aria-label="Rating"></div>
+        </fieldset>
+
+        <label class="toggle-row">
+          <input id="wouldEatAgain" type="checkbox" />
+          <span>Would eat again</span>
+        </label>
+
+        <fieldset class="tag-field">
+          <legend>Tags</legend>
+          <div id="tagOptions" class="tag-options"></div>
+        </fieldset>
+
+        <label>
+          Photo
+          <input id="photoInput" type="file" accept="image/*" />
+        </label>
+        <div id="photoPreview" class="photo-preview empty">No photo selected</div>
+
+        <label>
+          Notes
+          <textarea id="notes" rows="4" placeholder="Freshness, portion, station, regrets, repeat thoughts..."></textarea>
+        </label>
+
+        <div class="dialog-actions">
+          <button id="deleteButton" class="danger-button" type="button">Delete</button>
+          <div>
+            <button id="cancelButton" class="text-button" type="button">Cancel</button>
+            <button class="primary-button" type="submit">Save item</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <template id="mealCardTemplate">
+      <article class="meal-card">
+        <div class="meal-photo"></div>
+        <div class="meal-card-body">
+          <div class="meal-card-header">
+            <h4></h4>
+            <span class="rating-pill"></span>
+          </div>
+          <p class="meal-meta"></p>
+          <div class="meal-tags"></div>
+          <p class="meal-notes"></p>
+        </div>
+        <div class="meal-actions">
+          <button class="icon-button edit-meal" type="button" aria-label="Edit item">✎</button>
+          <button class="icon-button delete-meal" type="button" aria-label="Delete item">×</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
