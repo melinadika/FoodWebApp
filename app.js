@@ -2,6 +2,7 @@ const DB_NAME = "cafeteria-tracker";
 const DB_VERSION = 1;
 const STORE_NAME = "entries";
 const API_URL = "/api/entries";
+const PUBLISH_STATUS_URL = "/api/publish/status";
 const STATIC_DATA_URL = "data/entries.json";
 const TAGS = ["Healthy", "Filling", "Light", "Spicy", "Vegetarian", "Bland", "Too salty", "Good value", "Repeat", "Avoid"];
 
@@ -15,6 +16,8 @@ const state = {
   rating: 4,
   selectedTags: new Set(),
   photoData: "",
+  publishStatus: null,
+  publishPollId: null,
 };
 
 const els = {
@@ -29,6 +32,8 @@ const els = {
   todayButton: document.querySelector("#todayButton"),
   quickAddButton: document.querySelector("#quickAddButton"),
   searchInput: document.querySelector("#searchInput"),
+  publishStatus: document.querySelector("#publishStatus"),
+  publishStatusText: document.querySelector("#publishStatusText"),
   mealDialog: document.querySelector("#mealDialog"),
   mealForm: document.querySelector("#mealForm"),
   mealId: document.querySelector("#mealId"),
@@ -119,6 +124,14 @@ async function apiRequest(options = {}) {
   return response.json();
 }
 
+async function getPublishStatus() {
+  const response = await fetch(PUBLISH_STATUS_URL, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`Publish status request failed: ${response.status}`);
+  }
+  return response.json();
+}
+
 async function getServerEntries() {
   const data = await apiRequest();
   return sortEntries(data.entries || []);
@@ -190,6 +203,7 @@ function applyStorageModeUi() {
   document.querySelectorAll(".add-meal-button").forEach((button) => {
     button.hidden = isReadOnly();
   });
+  renderPublishStatus();
 }
 
 async function ensureEditable() {
@@ -226,7 +240,13 @@ async function saveEntry(entry) {
   if (state.storageMode === "file") {
     const nextEntries = state.entries.filter((item) => item.id !== entry.id);
     nextEntries.push(entry);
-    state.entries = await writeServerEntries(nextEntries);
+    const data = await apiRequest({
+      method: "PUT",
+      body: JSON.stringify({ entries: sortEntries([...nextEntries]) }),
+    });
+    state.entries = sortEntries(data.entries || []);
+    state.publishStatus = data.publish || state.publishStatus;
+    renderPublishStatus();
     return;
   }
   await saveBrowserEntry(entry);
@@ -235,7 +255,13 @@ async function saveEntry(entry) {
 async function deleteEntry(id) {
   if (!(await ensureEditable())) return;
   if (state.storageMode === "file") {
-    state.entries = await writeServerEntries(state.entries.filter((entry) => entry.id !== id));
+    const data = await apiRequest({
+      method: "PUT",
+      body: JSON.stringify({ entries: state.entries.filter((entry) => entry.id !== id) }),
+    });
+    state.entries = sortEntries(data.entries || []);
+    state.publishStatus = data.publish || state.publishStatus;
+    renderPublishStatus();
     return;
   }
   await deleteBrowserEntry(id);
@@ -244,7 +270,13 @@ async function deleteEntry(id) {
 async function clearEntries() {
   if (!(await ensureEditable())) return;
   if (state.storageMode === "file") {
-    state.entries = await writeServerEntries([]);
+    const data = await apiRequest({
+      method: "PUT",
+      body: JSON.stringify({ entries: [] }),
+    });
+    state.entries = sortEntries(data.entries || []);
+    state.publishStatus = data.publish || state.publishStatus;
+    renderPublishStatus();
     return;
   }
   await clearBrowserEntries();
@@ -304,6 +336,64 @@ function render() {
   applyStorageModeUi();
   renderCalendar();
   renderDayPanel();
+}
+
+function formatRelativeTime(isoString) {
+  if (!isoString) return "";
+  const ms = new Date(isoString).getTime() - Date.now();
+  if (ms <= 0) return "soon";
+  const minutes = Math.ceil(ms / 60000);
+  return `${minutes} min`;
+}
+
+function renderPublishStatus() {
+  if (!els.publishStatus) return;
+
+  const status = state.publishStatus;
+  const shouldShow = state.storageMode === "file" && status?.enabled;
+  els.publishStatus.hidden = !shouldShow;
+  if (!shouldShow) return;
+
+  els.publishStatus.dataset.status = status.status || "idle";
+
+  if (status.status === "pending") {
+    els.publishStatusText.textContent = `Publishing in ${formatRelativeTime(status.nextRunAt)}`;
+    return;
+  }
+
+  if (status.status === "publishing") {
+    els.publishStatusText.textContent = "Publishing...";
+    return;
+  }
+
+  if (status.status === "published") {
+    els.publishStatusText.textContent = "Published to GitHub";
+    return;
+  }
+
+  if (status.status === "error") {
+    els.publishStatusText.textContent = "Publish failed";
+    return;
+  }
+
+  els.publishStatusText.textContent = "Local changes saved";
+}
+
+async function refreshPublishStatus() {
+  if (state.storageMode !== "file") return;
+
+  try {
+    state.publishStatus = await getPublishStatus();
+    renderPublishStatus();
+  } catch (error) {
+    console.warn("Could not refresh publish status.", error);
+  }
+}
+
+function startPublishStatusPolling() {
+  if (state.storageMode !== "file" || state.publishPollId) return;
+  refreshPublishStatus();
+  state.publishPollId = setInterval(refreshPublishStatus, 10000);
 }
 
 function renderCalendar() {
@@ -601,6 +691,7 @@ async function init() {
   await initializeStorage();
   wireEvents();
   await refreshEntries();
+  startPublishStatusPolling();
 }
 
 init().catch((error) => {

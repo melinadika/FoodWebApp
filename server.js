@@ -1,11 +1,29 @@
 const http = require("node:http");
+const { execFile } = require("node:child_process");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { promisify } = require("node:util");
 
 const PORT = Number(process.env.PORT || 4173);
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "data");
 const DATA_FILE = path.join(DATA_DIR, "entries.json");
+const PUBLISH_DELAY_MS = Number(process.env.PUBLISH_DELAY_MS || 5 * 60 * 1000);
+const AUTO_PUBLISH = process.env.AUTO_PUBLISH !== "false";
+const execGitFile = promisify(execFile);
+
+const publishState = {
+  enabled: AUTO_PUBLISH,
+  status: AUTO_PUBLISH ? "idle" : "disabled",
+  pending: false,
+  publishing: false,
+  nextRunAt: null,
+  lastPublishedAt: null,
+  lastError: null,
+  lastCommit: null,
+};
+
+let publishTimer = null;
 
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -45,6 +63,80 @@ async function writeEntries(entries) {
   await fs.writeFile(DATA_FILE, `${JSON.stringify(entries, null, 2)}\n`, "utf8");
 }
 
+function publishSnapshot() {
+  return {
+    ...publishState,
+    delayMs: PUBLISH_DELAY_MS,
+  };
+}
+
+function schedulePublish() {
+  if (!AUTO_PUBLISH) return;
+
+  if (publishTimer) {
+    clearTimeout(publishTimer);
+  }
+
+  publishState.pending = true;
+  publishState.status = "pending";
+  publishState.nextRunAt = new Date(Date.now() + PUBLISH_DELAY_MS).toISOString();
+  publishState.lastError = null;
+
+  publishTimer = setTimeout(() => {
+    publishTimer = null;
+    publishChanges().catch((error) => {
+      console.error(error);
+    });
+  }, PUBLISH_DELAY_MS);
+}
+
+async function git(args, options = {}) {
+  return execGitFile("git", args, {
+    cwd: ROOT,
+    maxBuffer: 1024 * 1024,
+    ...options,
+  });
+}
+
+async function publishChanges() {
+  if (!AUTO_PUBLISH || publishState.publishing) return;
+
+  publishState.publishing = true;
+  publishState.pending = false;
+  publishState.status = "publishing";
+  publishState.nextRunAt = null;
+  publishState.lastError = null;
+
+  try {
+    await git(["add", "data/entries.json"]);
+
+    try {
+      await git(["diff", "--cached", "--quiet", "--", "data/entries.json"]);
+      publishState.status = "idle";
+      publishState.lastCommit = null;
+      return;
+    } catch (error) {
+      if (error.code !== 1) {
+        throw error;
+      }
+    }
+
+    const timestamp = new Date().toISOString();
+    await git(["commit", "-m", `Update meal log ${timestamp}`, "--", "data/entries.json"]);
+    const { stdout } = await git(["rev-parse", "--short", "HEAD"]);
+    await git(["push"]);
+
+    publishState.status = "published";
+    publishState.lastPublishedAt = new Date().toISOString();
+    publishState.lastCommit = stdout.trim();
+  } catch (error) {
+    publishState.status = "error";
+    publishState.lastError = [error.message, error.stderr, error.stdout].filter(Boolean).join("\n").trim();
+  } finally {
+    publishState.publishing = false;
+  }
+}
+
 function sendJson(res, statusCode, body) {
   res.writeHead(statusCode, {
     "content-type": "application/json; charset=utf-8",
@@ -70,7 +162,19 @@ function readBody(req) {
 }
 
 async function handleApi(req, res) {
-  if (req.url !== "/api/entries") {
+  const url = new URL(req.url, `http://localhost:${PORT}`);
+
+  if (url.pathname === "/api/publish/status") {
+    if (req.method === "GET") {
+      sendJson(res, 200, publishSnapshot());
+      return;
+    }
+
+    sendJson(res, 405, { error: "Method not allowed" });
+    return;
+  }
+
+  if (url.pathname !== "/api/entries") {
     sendJson(res, 404, { error: "Not found" });
     return;
   }
@@ -84,7 +188,8 @@ async function handleApi(req, res) {
     const body = await readBody(req);
     const parsed = JSON.parse(body || "{}");
     await writeEntries(parsed.entries);
-    sendJson(res, 200, { entries: parsed.entries });
+    schedulePublish();
+    sendJson(res, 200, { entries: parsed.entries, publish: publishSnapshot() });
     return;
   }
 
@@ -138,6 +243,7 @@ ensureDataFile()
     server.listen(PORT, "127.0.0.1", () => {
       console.log(`Food at Work is running at http://127.0.0.1:${PORT}`);
       console.log(`Entries are saved to ${DATA_FILE}`);
+      console.log(AUTO_PUBLISH ? `Auto-publish is enabled after ${PUBLISH_DELAY_MS}ms of inactivity.` : "Auto-publish is disabled.");
     });
   })
   .catch((error) => {

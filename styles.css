@@ -111,6 +111,54 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(65, 106, 138, 0.16);
 }
 
+.publish-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--muted);
+  padding: 0 12px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.publish-status[hidden] {
+  display: none;
+}
+
+.publish-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--muted);
+}
+
+.publish-status[data-status="pending"] .publish-dot {
+  background: var(--gold);
+}
+
+.publish-status[data-status="publishing"] .publish-dot {
+  background: var(--blue);
+}
+
+.publish-status[data-status="published"] .publish-dot,
+.publish-status[data-status="idle"] .publish-dot {
+  background: var(--green);
+}
+
+.publish-status[data-status="error"] {
+  border-color: rgba(182, 83, 66, 0.45);
+  color: var(--tomato);
+}
+
+.publish-status[data-status="error"] .publish-dot {
+  background: var(--tomato);
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(360px, 0.85fr);
@@ -551,6 +599,7 @@ legend {
 
   .topbar-actions {
     align-items: end;
+    flex-wrap: wrap;
   }
 
   .day-panel {
@@ -573,6 +622,11 @@ legend {
 
   .search-field {
     min-width: 100%;
+  }
+
+  .publish-status {
+    width: 100%;
+    justify-content: center;
   }
 
   .calendar-grid,

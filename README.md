@@ -26,6 +26,19 @@ Photos are stored inline as data URLs in that JSON file, so the file can grow if
 
 If neither `server.js` nor `data/entries.json` is available, it falls back to browser IndexedDB storage.
 
+## Auto-Publish
+
+When the local server writes changes to `data/entries.json`, it waits for 5 minutes of inactivity and then automatically commits and pushes the updated meal log to GitHub.
+
+The server only commits `data/entries.json`.
+
+You can adjust or disable auto-publish when starting the server:
+
+```sh
+PUBLISH_DELAY_MS=300000 npm start
+AUTO_PUBLISH=false npm start
+```
+
 ## GitHub Pages
 
 This repo can also be hosted as a static GitHub Pages site. In that mode, the app reads committed entries from:
