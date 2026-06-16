@@ -290,6 +290,31 @@ textarea:focus {
   background: #f0ece4;
 }
 
+.day-cell.is-weekend {
+  background: #e9e4dc;
+  color: #858079;
+  border-color: #d3cbc0;
+}
+
+.day-cell.is-weekend .badge {
+  background: #dfd8cf;
+  color: #6e675f;
+}
+
+.day-cell.is-weekend .badge.lunch {
+  background: #dce1e3;
+  color: #63707a;
+}
+
+.day-cell.is-weekend .rating-mini {
+  color: #9b7b4b;
+}
+
+.day-cell.is-weekend .thumb {
+  filter: grayscale(0.85);
+  opacity: 0.7;
+}
+
 .day-cell.is-today {
   border-color: var(--gold);
 }
@@ -639,10 +664,20 @@ legend {
     padding: 6px;
   }
 
-  .badge,
   .rating-mini,
   .thumb-strip {
     display: none;
+  }
+
+  .day-summary {
+    gap: 3px;
+    margin-top: 6px;
+  }
+
+  .badge {
+    min-height: 18px;
+    padding: 1px 5px;
+    font-size: 0.66rem;
   }
 
   .stats-strip,
