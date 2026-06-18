@@ -22,7 +22,13 @@ When the app is run with `npm start`, entries are read from and written to:
 data/entries.json
 ```
 
-Photos are stored inline as data URLs in that JSON file, so the file can grow if many large photos are added.
+Photos are stored as separate files in:
+
+```text
+data/photos/
+```
+
+Entries keep relative photo paths, so `data/entries.json` stays small and GitHub Pages can still serve the photos.
 
 If neither `server.js` nor `data/entries.json` is available, it falls back to browser IndexedDB storage.
 
@@ -30,7 +36,7 @@ If neither `server.js` nor `data/entries.json` is available, it falls back to br
 
 When the local server writes changes to `data/entries.json`, it waits for 5 minutes of inactivity and then automatically commits and pushes the updated meal log to GitHub.
 
-The server only commits `data/entries.json`.
+The server commits `data/entries.json` and `data/photos/`.
 
 You can adjust or disable auto-publish when starting the server:
 

@@ -8,6 +8,9 @@ const PORT = Number(process.env.PORT || 4173);
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "data");
 const DATA_FILE = path.join(DATA_DIR, "entries.json");
+const PHOTO_DIR = path.join(DATA_DIR, "photos");
+const PHOTO_PUBLIC_DIR = "data/photos";
+const MAX_REQUEST_BYTES = Number(process.env.MAX_REQUEST_MB || 75) * 1024 * 1024;
 const PUBLISH_DELAY_MS = Number(process.env.PUBLISH_DELAY_MS || 5 * 60 * 1000);
 const AUTO_PUBLISH = process.env.AUTO_PUBLISH !== "false";
 const execGitFile = promisify(execFile);
@@ -33,11 +36,14 @@ const MIME_TYPES = {
   ".png": "image/png",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
   ".svg": "image/svg+xml",
 };
 
 async function ensureDataFile() {
   await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.mkdir(PHOTO_DIR, { recursive: true });
   try {
     await fs.access(DATA_FILE);
   } catch {
@@ -55,12 +61,64 @@ async function readEntries() {
   return parsed;
 }
 
-async function writeEntries(entries) {
+function photoExtensionFromMime(mimeType) {
+  const extensions = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+  };
+  return extensions[mimeType.toLowerCase()] || "jpg";
+}
+
+function slugify(value) {
+  return String(value || "meal")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48) || "meal";
+}
+
+async function persistPhoto(entry) {
+  if (!entry.photo || typeof entry.photo !== "string" || !entry.photo.startsWith("data:")) {
+    return entry.photo || "";
+  }
+
+  const match = entry.photo.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) {
+    throw new Error(`Photo for ${entry.dishName || "item"} is not a valid data URL.`);
+  }
+
+  const [, mimeType, base64] = match;
+  const extension = photoExtensionFromMime(mimeType);
+  const fileName = `${entry.date || "undated"}-${entry.mealType || "meal"}-${slugify(entry.dishName)}-${entry.id}.${extension}`;
+  const filePath = path.join(PHOTO_DIR, fileName);
+  await fs.writeFile(filePath, Buffer.from(base64, "base64"));
+  return `${PHOTO_PUBLIC_DIR}/${fileName}`;
+}
+
+async function normalizeEntries(entries) {
   if (!Array.isArray(entries)) {
     throw new Error("Expected entries to be an array.");
   }
+
   await ensureDataFile();
-  await fs.writeFile(DATA_FILE, `${JSON.stringify(entries, null, 2)}\n`, "utf8");
+  const normalized = [];
+  for (const entry of entries) {
+    normalized.push({
+      ...entry,
+      photo: await persistPhoto(entry),
+    });
+  }
+  return normalized;
+}
+
+async function writeEntries(entries) {
+  const normalized = await normalizeEntries(entries);
+  await fs.writeFile(DATA_FILE, `${JSON.stringify(normalized, null, 2)}
+`, "utf8");
+  return normalized;
 }
 
 function publishSnapshot() {
@@ -108,10 +166,10 @@ async function publishChanges() {
   publishState.lastError = null;
 
   try {
-    await git(["add", "data/entries.json"]);
+    await git(["add", "data/entries.json", "data/photos"]);
 
     try {
-      await git(["diff", "--cached", "--quiet", "--", "data/entries.json"]);
+      await git(["diff", "--cached", "--quiet", "--", "data/entries.json", "data/photos"]);
       publishState.status = "idle";
       publishState.lastCommit = null;
       return;
@@ -122,7 +180,7 @@ async function publishChanges() {
     }
 
     const timestamp = new Date().toISOString();
-    await git(["commit", "-m", `Update meal log ${timestamp}`, "--", "data/entries.json"]);
+    await git(["commit", "-m", `Update meal log ${timestamp}`, "--", "data/entries.json", "data/photos"]);
     const { stdout } = await git(["rev-parse", "--short", "HEAD"]);
     await git(["push"]);
 
@@ -151,8 +209,8 @@ function readBody(req) {
     req.setEncoding("utf8");
     req.on("data", (chunk) => {
       body += chunk;
-      if (body.length > 25 * 1024 * 1024) {
-        reject(new Error("Request body is too large."));
+      if (body.length > MAX_REQUEST_BYTES) {
+        reject(new Error(`Request body is too large. Current limit is ${Math.round(MAX_REQUEST_BYTES / 1024 / 1024)}MB.`));
         req.destroy();
       }
     });
@@ -187,9 +245,9 @@ async function handleApi(req, res) {
   if (req.method === "PUT") {
     const body = await readBody(req);
     const parsed = JSON.parse(body || "{}");
-    await writeEntries(parsed.entries);
+    const entries = await writeEntries(parsed.entries);
     schedulePublish();
-    sendJson(res, 200, { entries: parsed.entries, publish: publishSnapshot() });
+    sendJson(res, 200, { entries, publish: publishSnapshot() });
     return;
   }
 
@@ -244,6 +302,8 @@ ensureDataFile()
       console.log(`Food at Work is running at http://127.0.0.1:${PORT}`);
       console.log(`Entries are saved to ${DATA_FILE}`);
       console.log(AUTO_PUBLISH ? `Auto-publish is enabled after ${PUBLISH_DELAY_MS}ms of inactivity.` : "Auto-publish is disabled.");
+      console.log(`Photos are saved to ${PHOTO_DIR}`);
+      console.log(`Max save request size is ${Math.round(MAX_REQUEST_BYTES / 1024 / 1024)}MB.`);
     });
   })
   .catch((error) => {
