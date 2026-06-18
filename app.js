@@ -408,7 +408,6 @@ function renderCalendar() {
     button.type = "button";
     button.className = "day-cell";
     button.setAttribute("aria-label", `${formatDate(key)}${dayEntries.length ? `, ${dayEntries.length} logged items` : ""}`);
-    if (date.getDay() === 0 || date.getDay() === 6) button.classList.add("is-weekend");
     if (date.getMonth() !== state.visibleMonth.getMonth()) button.classList.add("is-muted");
     if (key === toDateKey(new Date())) button.classList.add("is-today");
     if (key === state.selectedDate) button.classList.add("is-selected");
