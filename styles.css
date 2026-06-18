@@ -607,6 +607,21 @@ legend {
   max-width: 100%;
 }
 
+.form-error {
+  border: 1px solid rgba(182, 83, 66, 0.45);
+  border-radius: 8px;
+  background: rgba(182, 83, 66, 0.08);
+  color: var(--tomato);
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.primary-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .dialog-actions {
   justify-content: space-between;
 }
