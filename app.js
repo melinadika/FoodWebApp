@@ -50,8 +50,6 @@ const els = {
   deleteButton: document.querySelector("#deleteButton"),
   cancelButton: document.querySelector("#cancelButton"),
   closeDialog: document.querySelector("#closeDialog"),
-  saveButton: document.querySelector("#saveButton"),
-  formError: document.querySelector("#formError"),
   mealCardTemplate: document.querySelector("#mealCardTemplate"),
 };
 
@@ -570,16 +568,6 @@ function renderPhotoPreview() {
   els.photoPreview.append(image);
 }
 
-function setFormError(message = "") {
-  els.formError.textContent = message;
-  els.formError.hidden = !message;
-}
-
-function setSaving(isSaving) {
-  els.saveButton.disabled = isSaving;
-  els.saveButton.textContent = isSaving ? "Saving..." : "Save item";
-}
-
 function openMealDialog(entry = null, mealType = "lunch") {
   if (isReadOnly()) {
     ensureEditable();
@@ -596,8 +584,6 @@ function openMealDialog(entry = null, mealType = "lunch") {
   els.notes.value = entry?.notes || "";
   els.photoInput.value = "";
   els.deleteButton.hidden = !isEdit;
-  setFormError();
-  setSaving(false);
   state.rating = Number(entry?.rating || 4);
   state.selectedTags = new Set(entry?.tags || []);
   state.photoData = entry?.photo || "";
@@ -609,8 +595,6 @@ function openMealDialog(entry = null, mealType = "lunch") {
 }
 
 function closeMealDialog() {
-  setFormError();
-  setSaving(false);
   els.mealDialog.close();
 }
 
@@ -626,50 +610,6 @@ function imageFileToDataUrl(file) {
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
-}
-
-async function saveMealFromForm() {
-  setFormError();
-
-  if (!els.mealForm.reportValidity()) {
-    return;
-  }
-
-  setSaving(true);
-
-  try {
-    const now = new Date().toISOString();
-    const existing = state.entries.find((entry) => entry.id === els.mealId.value);
-    const entry = {
-      id: existing?.id || crypto.randomUUID(),
-      date: els.mealDate.value,
-      mealType: els.mealType.value,
-      dishName: els.dishName.value.trim(),
-      rating: state.rating,
-      photo: state.photoData,
-      notes: els.notes.value.trim(),
-      wouldEatAgain: els.wouldEatAgain.checked,
-      tags: [...state.selectedTags],
-      createdAt: existing?.createdAt || now,
-      updatedAt: now,
-    };
-
-    if (!entry.dishName) {
-      setFormError("Add a dish name before saving.");
-      return;
-    }
-
-    await saveEntry(entry);
-    state.selectedDate = entry.date;
-    state.visibleMonth = new Date(parseDateKey(entry.date).getFullYear(), parseDateKey(entry.date).getMonth(), 1);
-    closeMealDialog();
-    await refreshEntries();
-  } catch (error) {
-    console.error(error);
-    setFormError(`Could not save item: ${error.message}`);
-  } finally {
-    setSaving(false);
-  }
 }
 
 function wireEvents() {
@@ -711,11 +651,30 @@ function wireEvents() {
     renderPhotoPreview();
   });
 
-  els.saveButton.addEventListener("click", saveMealFromForm);
-
   els.mealForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    await saveMealFromForm();
+    const now = new Date().toISOString();
+    const existing = state.entries.find((entry) => entry.id === els.mealId.value);
+    const entry = {
+      id: existing?.id || crypto.randomUUID(),
+      date: els.mealDate.value,
+      mealType: els.mealType.value,
+      dishName: els.dishName.value.trim(),
+      rating: state.rating,
+      photo: state.photoData,
+      notes: els.notes.value.trim(),
+      wouldEatAgain: els.wouldEatAgain.checked,
+      tags: [...state.selectedTags],
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+    };
+
+    if (!entry.dishName) return;
+    await saveEntry(entry);
+    state.selectedDate = entry.date;
+    state.visibleMonth = new Date(parseDateKey(entry.date).getFullYear(), parseDateKey(entry.date).getMonth(), 1);
+    closeMealDialog();
+    await refreshEntries();
   });
 
   els.deleteButton.addEventListener("click", async () => {

@@ -78,7 +78,7 @@
     </div>
 
     <dialog id="mealDialog" class="meal-dialog">
-      <form id="mealForm">
+      <form id="mealForm" method="dialog">
         <div class="dialog-header">
           <div>
             <p class="eyebrow">Cafeteria item</p>
@@ -133,13 +133,11 @@
           <textarea id="notes" rows="4" placeholder="Freshness, portion, station, regrets, repeat thoughts..."></textarea>
         </label>
 
-        <p id="formError" class="form-error" role="alert" hidden></p>
-
         <div class="dialog-actions">
           <button id="deleteButton" class="danger-button" type="button">Delete</button>
           <div>
             <button id="cancelButton" class="text-button" type="button">Cancel</button>
-            <button id="saveButton" class="primary-button" type="button">Save item</button>
+            <button class="primary-button" type="submit">Save item</button>
           </div>
         </div>
       </form>
