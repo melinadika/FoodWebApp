@@ -266,11 +266,11 @@
     "dishName": "Banh Mi Pizza",
     "rating": 5,
     "photo": "data/photos/2026-06-17-lunch-banh-mi-pizza-0655d12a-46d4-4da0-9934-7c475591f43a.jpg",
-    "notes": "Havent eaten yet -- its in the fridge",
-    "wouldEatAgain": false,
+    "notes": "Ate this reheated as leftovers but still good. I'm not confident this isn't offensive to the people of vietnam (idk how I should feel about a souvlaki pizza). I feel like they just threw shredded carrot on a pizza (maybe the sauce was different too?) but it didn't really taste like Banh Mi? Tldr, we could've named this something else? And make real banh mi if you wanna do Banh Mi? But it was yummy and I would eat it again.",
+    "wouldEatAgain": true,
     "tags": [],
     "createdAt": "2026-06-18T21:56:15.529Z",
-    "updatedAt": "2026-06-18T21:56:15.529Z"
+    "updatedAt": "2026-06-19T17:05:47.627Z"
   },
   {
     "id": "3d058893-64c2-42d3-ad4c-3d43c4792f63",
@@ -305,10 +305,10 @@
     "dishName": "Lamb Georgian pastry",
     "rating": 5,
     "photo": "data/photos/2026-06-18-lunch-lamb-georgian-pastry-5596cceb-6938-4c50-a924-a3a32288d7ee.jpg",
-    "notes": "Cringe I dont remember the name but I havent eaten this yet its in the fridge",
-    "wouldEatAgain": false,
+    "notes": "Cringe I dont remember the name but holy fuck this might've been THE BEST THING I've eaten at snowflake lunch. Very flavorful and the bread was gas.",
+    "wouldEatAgain": true,
     "tags": [],
     "createdAt": "2026-06-18T21:59:57.376Z",
-    "updatedAt": "2026-06-18T21:59:57.376Z"
+    "updatedAt": "2026-06-19T17:06:53.058Z"
   }
 ]
